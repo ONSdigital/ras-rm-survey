@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: RAS/RM Survey Service
+  description: A service for dealing with surveys, including collection exercises and collection instruments.
+  version: "1.0"
+servers:
+  - url: https://localhost:8080
+    description: The default path for Survey in either standard K8s port forwarding or when using ras-rm-cli
+tags:
+  - name: info
+    description: Informational endpoints.
+  - name: surveys
+    description: Endpoints to interact with top-level surveys
+  - name: collection-exercises
+    description: Endpoints to interact with the collection exercises of a survey
+  - name: collection-instruments
+    description: Endpoints to interact with the collection instruments for a survey or collection exercise
+paths:
+  /info:
+    get:
+      summary: Returns basic information about the service.
+      description: Returns basic information about the service.
+      security: []
+      tags:
+        - info
+      responses:
+        '200':
+          description: A JSON of basic information about the service.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: survey
+                  version:
+                    type: string
+                    example: "1.0.0"
+        '404':
+          description: The service is down or incorrectly configured.
+  /health:
+    get:
+      summary: Returns health information about the service.
+      description: Returns information on whether aspects of the service (database, queues etc) are up and the latency to them.
+      security: []
+      tags:
+        - info
+      responses:
+        '200':
+            description: A JSON of information on the health of the service.
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    database:
+                      type: string
+                      example: "UP 100ms"
+                    rabbitmq:
+                       type: string
+                       example: "DOWN"
+        '404':
+          description: The service is down or incorrectly configured.
+  /survey:
+    get:
+      summary: Returns survey information filtered by query parameters.
+      description: Allows a search of surveys based on the query parameters provided.
+      tags:
+        - surveys
+      parameters:
+        - name: reference
+          in: query
+          description: The survey reference
+          required: false
+          schema:
+            type: string
+            example: '141'
+        - name: shortName
+          in: query
+          description: The survey short name
+          required: false
+          schema:
+            type: string
+            example: 'ASHE'
+        - name: longName
+          in: query
+          description: The survey long name
+          required: false
+          schema:
+            type: string
+            example: 'Annual Survey of Hours and Earnings'
+      responses:
+        '200':
+          description: Information on the requested survey(s).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/survey'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+components:
+  responses:
+    InvalidSurveyReferenceError:
+      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052)
+    UnauthorizedError:
+      description: Authentication information is missing or invalid.
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+    SurveyNotFoundError:
+      description: A survey wasn't found for the provided ID or query parameters.
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    survey:
+      type: object
+      properties:
+        reference:
+          type: string
+          example: '141'
+        shortName:
+          type: string
+          example: 'ASHE'
+        longName:
+          type: string
+          example: 'Annual Survey of Hours and Earnings'
+        legalBasis:
+          type: string
+          example: 'Statistics of Trade Act 1947'
+
+security:  
+  - basicAuth: []
