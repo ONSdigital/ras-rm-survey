@@ -108,10 +108,119 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/SurveyNotFoundError'
+    post:
+      summary: Adds a new survey.
+      description: Creates a new survey based on the provided requestBody.
+      tags:
+        - surveys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/survey'
+      responses:
+        '201':
+          description: The survey was successfully created and its attributes were returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/survey'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrFieldMissingError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+  /survey/{reference}:
+    get:
+      summary: Returns survey information for a particular survey.
+      description: Retrieves a survey based on its survey reference.
+      tags:
+        - surveys
+      parameters:
+        - name: reference
+          in: path
+          description: The survey reference
+          required: true
+          schema:
+            type: string
+            example: '141'
+      responses:
+        '200':
+          description: Information on the requested survey(s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/survey'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+    delete:
+      summary: Deletes a survey.
+      description: Deletes a survey and its associated collection exercises and collection instruments.
+      tags:
+        - surveys
+      parameters:
+        - name: reference
+          in: path
+          description: The survey reference
+          required: true
+          schema:
+            type: string
+            example: '141'
+      responses:
+        '204':
+          description: The survey and its associated entities have been deleted.
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+    patch:
+      summary: Updates survey information.
+      description: Updates the details of a survey such as its name or legal basis.
+      tags:
+        - surveys
+      parameters:
+        - name: reference
+          in: path
+          description: The survey reference
+          required: true
+          schema:
+            type: string
+            example: '141'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/survey'
+      responses:
+        '200':
+          description: The survey was successfully updated and its new attributes were returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/survey'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidSchemaError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
 components:
   responses:
     InvalidSurveyReferenceError:
-      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052)
+      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052).
+    InvalidSurveyReferenceOrInvalidSchemaError:
+      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or the requestBody was malformed.
+    InvalidSurveyReferenceOrFieldMissingError:
+      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or a field was missing in the requestBody (all are mandatory).
     UnauthorizedError:
       description: Authentication information is missing or invalid.
       headers:
