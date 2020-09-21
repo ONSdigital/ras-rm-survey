@@ -213,6 +213,83 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/SurveyNotFoundError'
+  /survey/{reference}/collectioninstrument:
+    post:
+      summary: Adds a new collection instrument to a survey.
+      description: Adds a new collection instrument to the specified survey for use in all related collection exercises.
+      tags:
+        - collection-instruments
+      parameters:
+        - name: reference
+          in: path
+          description: The survey reference
+          required: true
+          schema:
+            type: string
+            example: '141'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                collectionInstrument:
+                  $ref: '#/components/schemas/collectionInstrument'
+                SEFTFile:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: The collection instrument was successfully uploaded and associated with the survey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionInstrument'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidSchemaError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+  /collectionexercise:
+    get:
+      summary: Returns collection exercise information filtered by query parameters.
+      description: Allows a search of collection exercises based on the query parameters provided.
+      tags:
+        - collection-exercises
+      parameters:
+        - name: reference
+          in: query
+          description: The survey reference
+          required: false
+          schema:
+            type: string
+            example: '141'
+        - name: state
+          in: query
+          description: The state of the collection exercise
+          required: false
+          schema:
+            $ref: '#/components/schemas/collectionExerciseState'
+      responses:
+        '200':
+          description: Information on the requested collection exercise(s).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/collectionExerciseShort'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidStateError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionExerciseNotFoundError'
 components:
   responses:
     InvalidSurveyReferenceError:
@@ -221,6 +298,8 @@ components:
       description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or the requestBody was malformed.
     InvalidSurveyReferenceOrFieldMissingError:
       description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or a field was missing in the requestBody (all are mandatory).
+    InvalidSurveyReferenceOrInvalidStateError:
+      description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or the collection exercise state was invalid.
     UnauthorizedError:
       description: Authentication information is missing or invalid.
       headers:
@@ -229,6 +308,8 @@ components:
             type: string
     SurveyNotFoundError:
       description: A survey wasn't found for the provided ID or query parameters.
+    CollectionExerciseNotFoundError:
+      description: A collection exercise wasn't found for the provided ID or query parameters.
   securitySchemes:
     basicAuth:
       type: http
@@ -249,6 +330,80 @@ components:
         legalBasis:
           type: string
           example: 'Statistics of Trade Act 1947'
+        collectionInstruments:
+          type: array
+          items:
+            $ref: '#/components/schemas/collectionInstrument'
+    collectionExerciseShort:
+      type: object
+      properties:
+        exerciseUUID:
+          type: string
+          format: uuid
+          example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+        surveyReference:
+          type: string
+          example: '141'
+        state:
+          $ref: '#/components/schemas/collectionExerciseState'
+        mps:
+          type: string
+          format: date-time
+        goLive:
+          type: string
+          format: date-time
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        employment:
+          type: string
+          format: date-time
+        return:
+          type: string
+          format: date-time
+        emails:
+          type: array
+          items:
+            $ref: '#/components/schemas/collectionExerciseEmail'
+    collectionExerciseEmail:
+      type: object
+      properties:
+        emailType:
+          type: string
+          example: 'Reminder 1'
+        scheduled:
+          type: string
+          format: date-time
+    collectionExerciseState:
+      type: string
+      enum: ['INIT', 'CREATED', 'SCHEDULED', 'READY_FOR_REVIEW', 'EXECUTION_STARTED', 'EXECUTED', 'VALIDATED', 'FAILEDVALIDATION', 'READY_FOR_LIVE', 'LIVE']
+    collectionInstrument:
+      type: object
+      properties:
+        instrumentUUID:
+          type: string
+          format: uuid
+          example: 'ddc37cb6-c88a-473b-949a-fa5fad9265a1'
+        instrumentType:
+          $ref: '#/components/schemas/collectionInstrumentType'
+        classifiers:
+          type: object
+          properties:
+            formType:
+              type: string
+              example: '0001'
+            eqID:
+              type: string
+              example: '2'
+        seftFilename:
+          type: string
+          example: 'seft_instrument.xls'
+    collectionInstrumentType:
+      type: string
+      enum: ['EQ', 'SEFT']
 
 security:  
   - basicAuth: []
