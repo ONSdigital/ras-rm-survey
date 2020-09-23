@@ -183,3 +183,4 @@ jobs:
           gcloud pubsub topics publish $SPINNAKER_TOPIC --project $HOST \
           --message "{ \"kind\": \"storage#object\", \"name\": \"$IMAGE/$IMAGE-${{ env.HELM_VERSION }}.tgz\", \"bucket\": \"$ARTIFACT_BUCKET\" }" \
           --attribute cd="actions"
+          
