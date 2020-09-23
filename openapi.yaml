@@ -101,7 +101,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/survey'
+                      $ref: '#/components/schemas/surveyWithInstruments'
         '400':
           $ref: '#/components/responses/InvalidSurveyReferenceError'
         '401':
@@ -181,6 +181,8 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/SurveyNotFoundError'
+        '422':
+          $ref: '#/components/responses/InvalidStateError'
     patch:
       summary: Updates survey information.
       description: Updates the details of a survey such as its name or legal basis.
@@ -255,7 +257,7 @@ paths:
   /collectionexercise:
     get:
       summary: Returns collection exercise information filtered by query parameters.
-      description: Allows a search of collection exercises based on the query parameters provided.
+      description: Allows a search of collection exercises based on the query parameters provided. Will provide survey information if verbose = true.
       tags:
         - collection-exercises
       parameters:
@@ -272,9 +274,15 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/collectionExerciseState'
+        - name: verbose
+          in: query
+          description: Specifies whether to return information about the survey along with the usual collection exercise information.
+          schema:
+            type: boolean
       responses:
         '200':
-          description: Information on the requested collection exercise(s).
+          # In SwaggerUI, this will return a weird example of both in one array - there is no satisfying work-around for this and has been a known bug for 3+ years.
+          description: Information on the requested collection exercise(s). The first example is verbose = false, the second example is verbose = true.
           content:
             application/json:
               schema:
@@ -283,15 +291,201 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/collectionExerciseShort'
+                      oneOf:
+                        - $ref: '#/components/schemas/collectionExerciseShort'
+                        - $ref: '#/components/schemas/collectionExerciseLong'
         '400':
           $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidStateError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/CollectionExerciseNotFoundError'
+    post:
+      summary: Posts a new collection exercise.
+      description: Adds a new collection exercise, associated to the included survey reference. `surveyReference` and `periodName` are required fields.
+      tags:
+        - collection-exercises
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/collectionExerciseShort'
+      responses:
+        '201':
+          description: The collection exercise was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionExerciseShort'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidSchemaError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/SurveyNotFoundError'
+        '409':
+          $ref: '#/components/responses/CollectionExerciseExistsError'
+  /collectionexercise/{uuid}:
+    get:
+      summary: Retuns collection exercise information.
+      description: Returns information on the specified collection exercise. Will provide survey and collection instrument information if verbose = true.
+      tags:
+        - collection-exercises
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection exercise
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+      responses:
+        '200':
+          # In SwaggerUI, this will return no examples - there is no satisfying work-around for this and has been a known bug for 3+ years.
+          description: Information on the requested collection exercise(s). See GET /collectionexercise for examples.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/collectionExerciseShort'
+                  - $ref: '#/components/schemas/collectionExerciseLong'
+        '400':
+          $ref: '#/components/responses/InvalidUUIDError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionExerciseNotFoundError'
+    delete:
+      summary: Deletes a collection exercise.
+      description: Deletes the specified collection exercise (but not any associated collection instruments, as they may be used for future collection exercises on that survey).
+      tags:
+        - collection-exercises
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection exercise
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+      responses:
+        '204':
+          description: The collection exercise was successfully deleted.
+        '400':
+          $ref: '#/components/responses/InvalidUUIDError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionExerciseNotFoundError'
+        '422':
+          $ref: '#/components/responses/InvalidStateError'
+    patch:
+      summary: Updates collection exercise information.
+      description: Updates details of the specified collection exercise. Can be used to correct dates/collection exercise periods, add reminder emails etc.
+      tags:
+        - collection-exercises
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection exercise
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+      responses:
+        '200':
+          description: The survey was successfully updated and its new attributes were returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionExerciseShort'
+        '400':
+          $ref: '#/components/responses/InvalidSurveyReferenceOrInvalidStateError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionExerciseNotFoundError'
+        '422':
+          $ref: '#/components/responses/InvalidStateOrActionError'
+  /collectionexercise/{uuid}/collectioninstrument:
+    patch:
+      summary: Links or unlinks collection instrument(s) to a collection exercise.
+      description: Links or unlinks any number of collection instrument(s) to the specified collection exercise.
+      tags:
+        - collection-instruments
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection exercise
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items: 
+                    type: object
+                    properties:
+                      collectionInstrumentUUID:
+                        type: string
+                        format: uuid
+                        example: 'ddc37cb6-c88a-473b-949a-fa5fad9265a1'
+                      action:
+                        type: string
+                        enum: ['LINK', 'UNLINK']
+      responses:
+        '201':
+          description: The collection instrument was successfully (un)associated with the collection exercise.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionExerciseLong'
+        '400':
+          $ref: '#/components/responses/InvalidUUIDOrInvalidSchemaError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionExerciseOrInstrumentNotFoundError'
+  /collectioninstrument/{uuid}:
+    delete:
+      summary: Deletes a collection instrument.
+      description: Deletes the specified collection instrument and unassociates it from both surveys and collection exercises.
+      tags:
+        - collection-instruments
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection exercise
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 'ddc37cb6-c88a-473b-949a-fa5fad9265a1'
+      responses:
+        '204':
+          description: The collection instrument was successfully unlinked and deleted.
+        '400':
+          $ref: '#/components/responses/InvalidUUIDError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionInstrumentNotFoundError'
 components:
   responses:
+    InvalidStateError:
+      description: The entity couldn't be modified or deleted because it (or an associated entity) is in an invalid state to do so (e.g. a collection exercise is currently LIVE).
+    InvalidStateOrActionError:
+      description: The entity couldn't be modified or deleted because it (or an associated entity) is in an invalid state to do so (e.g. a collection exercise is currently LIVE) or the request was trying to do something prohibited (e.g. changing the survey reference on a collection exercise).
     InvalidSurveyReferenceError:
       description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052).
     InvalidSurveyReferenceOrInvalidSchemaError:
@@ -300,6 +494,10 @@ components:
       description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or a field was missing in the requestBody (all are mandatory).
     InvalidSurveyReferenceOrInvalidStateError:
       description: The survey reference was in an invalid format (a 3-digit integer with leading zeroes if necessary, e.g. 052) or the collection exercise state was invalid.
+    InvalidUUIDError:
+      description: The provided UUID(s) are not in a valid UUID v4 format.
+    InvalidUUIDOrInvalidSchemaError:
+      description: The provided UUID(s) are not in a valid UUID v4 format or the requestBody was malformed.
     UnauthorizedError:
       description: Authentication information is missing or invalid.
       headers:
@@ -310,6 +508,12 @@ components:
       description: A survey wasn't found for the provided ID or query parameters.
     CollectionExerciseNotFoundError:
       description: A collection exercise wasn't found for the provided ID or query parameters.
+    CollectionInstrumentNotFoundError:
+      description: A collection instrument wasn't found for the provided ID or query parameters.
+    CollectionExerciseOrInstrumentNotFoundError:
+      description: A collection exercise or instrument wasn't found for the provided IDs.
+    CollectionExerciseExistsError:
+      description: A collection exercise already exists for that UUID.
   securitySchemes:
     basicAuth:
       type: http
@@ -330,6 +534,11 @@ components:
         legalBasis:
           type: string
           example: 'Statistics of Trade Act 1947'
+    surveyWithInstruments:
+      type: object
+      properties:
+        survey:
+          $ref: '#/components/schemas/survey'
         collectionInstruments:
           type: array
           items:
@@ -346,6 +555,9 @@ components:
           example: '141'
         state:
           $ref: '#/components/schemas/collectionExerciseState'
+        periodName:
+          type: string
+          example: '202009'
         mps:
           type: string
           format: date-time
@@ -368,6 +580,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/collectionExerciseEmail'
+    collectionExerciseLong:
+      type: object
+      properties:
+        survey:
+          $ref: '#/components/schemas/survey'
+        collectionInstruments:
+          type: array
+          items:
+            $ref: '#/components/schemas/collectionInstrument'
+        collectionExercise:
+          $ref: '#/components/schemas/collectionExerciseShort'
     collectionExerciseEmail:
       type: object
       properties:
