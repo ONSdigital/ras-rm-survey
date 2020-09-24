@@ -10,6 +10,12 @@ image:
   tag: latest
   pullPolicy: Always
 
+container:
+  port: 8080
+service:
+  type: ClusterIP
+  port: 80
+
 resources:
   requests:
     memory: "32Mi"
@@ -22,4 +28,3 @@ dns:
 
 gcp:
   project: rm-ras-sandbox
-  
