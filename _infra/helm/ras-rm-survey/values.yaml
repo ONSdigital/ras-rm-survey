@@ -1,0 +1,30 @@
+env: sandbox
+replicas: 1
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 1
+
+image:
+  devRepo: eu.gcr.io/ons-rasrmbs-management
+  name: eu.gcr.io/ons-rasrmbs-management
+  tag: latest
+  pullPolicy: Always
+
+container:
+  port: 8080
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    memory: "32Mi"
+
+verbose: true
+
+dns:
+  enabled: false
+  wellKnownPort: 8080
+
+gcp:
+  project: rm-ras-sandbox
