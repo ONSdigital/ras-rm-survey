@@ -27,4 +27,4 @@ dns:
   wellKnownPort: 8080
 
 gcp:
-  project: rm-ras-sandbox
+  project: ras-rm-sandbox
