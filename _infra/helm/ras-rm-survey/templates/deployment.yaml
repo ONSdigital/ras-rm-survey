@@ -39,3 +39,34 @@ spec:
             value: /var/secrets/google/credentials.json
           - name: GOOGLE_CLOUD_PROJECT
             value: {{ .Values.gcp.project }}
+          - name: DB_HOST
+            {{- if .Values.database.managedPostgres }}
+            valueFrom:
+              secretKeyRef:
+                name: db-config
+                key: db-host
+            {{- else if .Values.database.sqlProxyEnabled }}
+            value: "localhost"
+            {{- else }}
+            value: $(POSTGRES_SERVICE_HOST)
+            {{- end }}
+          - name: DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: db-config
+                key: db-port
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: db-config
+                key: {{ .Values.database.secrets.nameKey }}
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: {{ .Values.database.secrets.usernameKey }}
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: {{ .Values.database.secrets.passwordKey }}

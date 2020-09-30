@@ -28,3 +28,11 @@ dns:
 
 gcp:
   project: ras-rm-sandbox
+
+database:
+  managedPostgres: false
+  sqlProxyEnabled: false
+  secrets:
+    usernameKey: username
+    passwordKey: password
+    nameKey: surveyv2
