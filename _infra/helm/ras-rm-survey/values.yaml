@@ -21,6 +21,7 @@ resources:
     memory: "32Mi"
 
 verbose: true
+logLevel: INFO
 
 dns:
   enabled: false
@@ -28,3 +29,11 @@ dns:
 
 gcp:
   project: ras-rm-sandbox
+
+database:
+  managedPostgres: false
+  sqlProxyEnabled: false
+  secrets:
+    usernameKey: username
+    passwordKey: password
+    nameKey: surveyv2
