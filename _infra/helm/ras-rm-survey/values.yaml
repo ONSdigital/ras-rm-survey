@@ -32,7 +32,8 @@ gcp:
 database:
   managedPostgres: false
   sqlProxyEnabled: false
+  schema: surveyv2
   secrets:
     usernameKey: username
     passwordKey: password
-    nameKey: surveyv2
+    nameKey: db-name

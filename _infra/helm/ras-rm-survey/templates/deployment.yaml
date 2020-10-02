@@ -70,3 +70,5 @@ spec:
               secretKeyRef:
                 name: db-credentials
                 key: {{ .Values.database.secrets.passwordKey }}
+          - name: DB_SCHEMA
+            value: {{ .Values.database.schema }}
