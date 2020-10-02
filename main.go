@@ -22,7 +22,7 @@ func main() {
 		log.Fatalln("Couldn't connect to postgres, " + err.Error())
 	}
 
-	db.AutoMigrate(&Survey{})
+	db.AutoMigrate(&Survey{}, &CollectionExercise{}, &CollectionInstrument{}, &Email{})
 
 	router := mux.NewRouter()
 	log.Println("Application started")
