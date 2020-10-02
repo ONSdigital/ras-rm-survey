@@ -37,13 +37,13 @@ type (
 		PeriodEnd             sql.NullTime
 		Employment            sql.NullTime
 		Return                sql.NullTime
-		Emails                []Email
+		Emails                []Email                `gorm:"foreignKey:ExerciseID"`
 		CollectionInstruments []CollectionInstrument `gorm:"many2many:associated_instruments;"`
 	}
 
 	// CollectionInstrument represents collection instrument information
 	CollectionInstrument struct {
-		InstrumentID   uint `gorm:"primaryKey;autoIncrement"`
+		gorm.Model
 		SurveyRef      string
 		InstrumentUUID uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 		Type           string
@@ -54,6 +54,7 @@ type (
 	// Email represents email trigger dates for a collection exercise
 	Email struct {
 		gorm.Model
+		ExerciseID    uint
 		Type          string
 		TimeScheduled time.Time
 	}
