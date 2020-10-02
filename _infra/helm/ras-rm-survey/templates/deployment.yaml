@@ -71,6 +71,10 @@ spec:
                 name: db-credentials
                 key: {{ .Values.database.secrets.passwordKey }}
           - name: DB_SCHEMA
+<<<<<<< HEAD
             value: {{ .Values.database.schema }}
           - name: LOG_LEVEL
             value: {{ .Values.logLevel }}
+=======
+            value: {{ .Values.database.schema }}
+>>>>>>> Changes based on testing
