@@ -17,7 +17,7 @@ func main() {
 
 	log.Println("Starting application...")
 
-	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable currentSchema=%s", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"), viper.GetString("db_schema"))
+	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable search_path=%s", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"), viper.GetString("db_schema"))
 	db, err := gorm.Open(postgres.Open(dbURI), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix: "surveyv2.",
