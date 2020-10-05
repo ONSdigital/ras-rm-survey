@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -38,17 +39,18 @@ type (
 		Employment            sql.NullTime
 		Return                sql.NullTime
 		Emails                []Email                `gorm:"foreignKey:ExerciseID"`
-		CollectionInstruments []CollectionInstrument `gorm:"many2many:associated_instruments;"`
+		CollectionInstruments []CollectionInstrument `gorm:"many2many:associated_instruments;foreignKey:ExerciseID"`
 	}
 
 	// CollectionInstrument represents collection instrument information
 	CollectionInstrument struct {
 		gorm.Model
-		SurveyRef      string
-		InstrumentUUID uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-		Type           string
-		Classifiers    JSONB
-		SeftFilename   sql.NullString
+		SurveyRef           string
+		InstrumentUUID      uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+		Type                string
+		Classifiers         JSONB
+		SeftFilename        sql.NullString
+		CollectionExercises []CollectionExercise `gorm:"many2many:associated_instruments;foreignKey:InstrumentID"`
 	}
 
 	// Email represents email trigger dates for a collection exercise
@@ -57,6 +59,12 @@ type (
 		ExerciseID    uint
 		Type          string
 		TimeScheduled time.Time
+	}
+
+	// AssociatedInstrument represents the many:many relationship between collection exercises and instruments
+	AssociatedInstrument struct {
+		ExerciseID   uint
+		InstrumentID uint
 	}
 
 	// JSONB allows conversion into a PSQL JSONB column
@@ -82,4 +90,29 @@ func (j JSONB) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return json.RawMessage(j).MarshalJSON()
+}
+
+// TableName sets the table name manually (to make sure the schema is correct)
+func (CollectionInstrument) TableName() string {
+	return viper.GetString("db_schema") + ".collection_instruments"
+}
+
+// TableName sets the table name manually (to make sure the schema is correct)
+func (CollectionExercise) TableName() string {
+	return viper.GetString("db_schema") + ".collection_exercises"
+}
+
+// TableName sets the table name manually (to make sure the schema is correct)
+func (Survey) TableName() string {
+	return viper.GetString("db_schema") + ".surveys"
+}
+
+// TableName sets the table name manually (to make sure the schema is correct)
+func (Email) TableName() string {
+	return viper.GetString("db_schema") + ".emails"
+}
+
+// TableName sets the table name manually (to make sure the schema is correct)
+func (AssociatedInstrument) TableName() string {
+	return viper.GetString("db_schema") + ".associated_instruments"
 }
