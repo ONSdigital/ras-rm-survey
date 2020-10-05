@@ -38,7 +38,7 @@ func main() {
 	router := mux.NewRouter()
 	fmt.Println("Application started")
 
-	http.HandleFunc("/info", showInfo)
+	router.HandleFunc("/info", showInfo)
     router.HandleFunc("/health", showHealth)
     log.Fatal(http.ListenAndServe(":8080", router))
 }
