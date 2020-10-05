@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ONSdigital/ras-rm-survey/logger"
+	"github.com/ONSdigital/ras-rm-survey/models"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
@@ -14,8 +16,12 @@ import (
 
 func main() {
 	viper.AutomaticEnv()
+	err := logger.ConfigureLogger()
+	if err != nil {
+		log.Fatalln("Couldn't set up a logger, exiting", err)
+	}
 
-	log.Println("Starting application...")
+	logger.Logger.Info("Starting ras-rm-survey...")
 
 	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"))
 	db, err := gorm.Open(postgres.Open(dbURI), &gorm.Config{
@@ -24,13 +30,12 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalln("Couldn't connect to postgres, " + err.Error())
+		logger.Logger.Fatal("Couldn't connect to postgres, " + err.Error())
 	}
 
-	db.AutoMigrate(&Survey{}, &CollectionExercise{}, &CollectionInstrument{}, &Email{})
+	db.AutoMigrate(&models.Survey{}, &models.CollectionExercise{}, &models.CollectionInstrument{}, &models.Email{})
 
 	router := mux.NewRouter()
-	log.Println("Application started")
+	logger.Logger.Info("ras-rm-survey started")
 	http.ListenAndServe(":8080", router)
-
 }
