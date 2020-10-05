@@ -72,9 +72,15 @@ spec:
                 key: {{ .Values.database.secrets.passwordKey }}
           - name: DB_SCHEMA
 <<<<<<< HEAD
+<<<<<<< HEAD
             value: {{ .Values.database.schema }}
           - name: LOG_LEVEL
             value: {{ .Values.logLevel }}
 =======
             value: {{ .Values.database.schema }}
 >>>>>>> Changes based on testing
+=======
+            value: {{ .Values.database.schema }}
+          - name: LOG_LEVEL
+            value: {{ .Values.logLevel }}
+>>>>>>> Use Census' logging config and refactor into directories
