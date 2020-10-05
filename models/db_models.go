@@ -8,11 +8,7 @@ import (
 	"fmt"
 	"time"
 
-<<<<<<< HEAD
 	"github.com/gofrs/uuid"
-=======
-	"github.com/google/uuid"
->>>>>>> Use Census' logging config and refactor into directories
 	"gorm.io/gorm"
 )
 
@@ -33,11 +29,7 @@ type (
 		gorm.Model
 		SurveyRef             string
 		State                 string
-<<<<<<< HEAD
 		ExerciseUUID          uuid.UUID `gorm:"type:uuid"`
-=======
-		ExerciseUUID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
->>>>>>> Use Census' logging config and refactor into directories
 		PeriodName            string
 		MPS                   sql.NullTime
 		GoLive                sql.NullTime
@@ -53,11 +45,7 @@ type (
 	CollectionInstrument struct {
 		gorm.Model
 		SurveyRef      string
-<<<<<<< HEAD
 		InstrumentUUID uuid.UUID `gorm:"type:uuid"`
-=======
-		InstrumentUUID uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
->>>>>>> Use Census' logging config and refactor into directories
 		Type           string
 		Classifiers    JSONB
 		SeftFilename   sql.NullString
@@ -71,14 +59,11 @@ type (
 		TimeScheduled time.Time
 	}
 
-<<<<<<< HEAD
 	// PostgresStrategy is a naming strategy that respects Postgres schemas
 	PostgresStrategy struct {
 		Schema string
 	}
 
-=======
->>>>>>> Use Census' logging config and refactor into directories
 	// JSONB allows conversion into a PSQL JSONB column
 	JSONB json.RawMessage
 )
@@ -103,7 +88,6 @@ func (j JSONB) Value() (driver.Value, error) {
 	}
 	return json.RawMessage(j).MarshalJSON()
 }
-<<<<<<< HEAD
 
 // BeforeCreate will create a UUID for the CollectionExercise
 func (ce *CollectionExercise) BeforeCreate(tx *gorm.DB) (err error) {
@@ -116,5 +100,3 @@ func (ci *CollectionInstrument) BeforeCreate(tx *gorm.DB) (err error) {
 	ci.InstrumentUUID, err = uuid.NewV4()
 	return
 }
-=======
->>>>>>> Use Census' logging config and refactor into directories
