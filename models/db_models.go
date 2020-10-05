@@ -39,7 +39,7 @@ type (
 		Employment            sql.NullTime
 		Return                sql.NullTime
 		Emails                []Email                `gorm:"foreignKey:ExerciseID"`
-		CollectionInstruments []CollectionInstrument `gorm:"many2many:associated_instruments;foreignKey:ExerciseID"`
+		CollectionInstruments []CollectionInstrument `gorm:"many2many:associated_instruments;joinForeignKey:ExerciseID"`
 	}
 
 	// CollectionInstrument represents collection instrument information
@@ -50,7 +50,7 @@ type (
 		Type                string
 		Classifiers         JSONB
 		SeftFilename        sql.NullString
-		CollectionExercises []CollectionExercise `gorm:"many2many:associated_instruments;foreignKey:InstrumentID"`
+		CollectionExercises []CollectionExercise `gorm:"many2many:associated_instruments;joinForeignKey:InstrumentID"`
 	}
 
 	// Email represents email trigger dates for a collection exercise
