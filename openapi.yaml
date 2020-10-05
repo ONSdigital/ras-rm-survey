@@ -340,6 +340,11 @@ paths:
             type: string
             format: uuid
             example: '6f1bf642-2f9c-408f-8ffe-93b40667d99a'
+        - name: verbose
+          in: query
+          description: Specifies whether to return information about the survey along with the usual collection exercise information.
+          schema:
+            type: boolean
       responses:
         '200':
           # In SwaggerUI, this will return no examples - there is no satisfying work-around for this and has been a known bug for 3+ years.
@@ -457,6 +462,65 @@ paths:
         '404':
           $ref: '#/components/responses/CollectionExerciseOrInstrumentNotFoundError'
   /collectioninstrument/{uuid}:
+    get:
+      summary: Retrieves a collection instrument.
+      description: Retrieves the specified instrument.
+      tags:
+        - collection-instruments
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection instrument
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 'ddc37cb6-c88a-473b-949a-fa5fad9265a1'
+      responses:
+        '200':
+          description: The collection instrument was successfully retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionInstrument'
+        '400':
+          $ref: '#/components/responses/InvalidUUIDError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionInstrumentNotFoundError'
+    patch:
+      summary: Modifies a collection instrument.
+      description: Modifies the specified instrument.
+      tags:
+        - collection-instruments
+      parameters:
+        - name: uuid
+          in: path
+          description: The UUID of the collection instrument
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 'ddc37cb6-c88a-473b-949a-fa5fad9265a1'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/collectionInstrument'
+      responses:
+        '200':
+          description: The collection instrument was successfully modified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/collectionInstrument'
+        '400':
+          $ref: '#/components/responses/InvalidUUIDError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/CollectionInstrumentNotFoundError'
     delete:
       summary: Deletes a collection instrument.
       description: Deletes the specified collection instrument and unassociates it from both surveys and collection exercises.
@@ -465,7 +529,7 @@ paths:
       parameters:
         - name: uuid
           in: path
-          description: The UUID of the collection exercise
+          description: The UUID of the collection instrument
           required: true
           schema:
             type: string
@@ -534,6 +598,9 @@ components:
         legalBasis:
           type: string
           example: 'Statistics of Trade Act 1947'
+        surveyMode:
+          type: string
+          enum: ['EQ', 'SEFT']
     surveyWithInstruments:
       type: object
       properties:
