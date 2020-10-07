@@ -26,9 +26,6 @@ func main() {
 
 	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"))
 	db, err := gorm.Open(postgres.Open(dbURI), &gorm.Config{
-		NamingStrategy: models.PostgresStrategy{
-			Schema: viper.GetString("db_schema"),
-		},
 		Logger: glog.Default.LogMode(glog.Info),
 	})
 	if err != nil {
