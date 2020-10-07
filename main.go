@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	glog "gorm.io/gorm/logger"
 )
 
 func main() {
@@ -25,9 +24,7 @@ func main() {
 	logger.Logger.Info("Starting ras-rm-survey...")
 
 	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"))
-	db, err := gorm.Open(postgres.Open(dbURI), &gorm.Config{
-		Logger: glog.Default.LogMode(glog.Info),
-	})
+	db, err := gorm.Open(postgres.Open(dbURI), &gorm.Config{})
 	if err != nil {
 		logger.Logger.Fatal("Couldn't connect to postgres, " + err.Error())
 	}
