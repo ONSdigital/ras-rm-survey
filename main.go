@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	glog "gorm.io/gorm/logger"
 )
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 		NamingStrategy: models.PostgresStrategy{
 			Schema: viper.GetString("db_schema"),
 		},
+		Logger: glog.Default.LogMode(glog.Info),
 	})
 	if err != nil {
 		logger.Logger.Fatal("Couldn't connect to postgres, " + err.Error())
