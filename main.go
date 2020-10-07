@@ -34,6 +34,8 @@ func main() {
 		logger.Logger.Fatal("Couldn't connect to postgres, " + err.Error())
 	}
 
+	db.Exec("CREATE SCHEMA IF NOT EXISTS ?", viper.GetString("db_schema"))
+	db.Exec("SET search_path TO ?", viper.GetString("db_schema"))
 	db.AutoMigrate(&models.Survey{}, &models.CollectionExercise{}, &models.CollectionInstrument{}, &models.Email{})
 
 	router := mux.NewRouter()
