@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ONSdigital/ras-rm-survey/logger"
 	"github.com/google/uuid"
 	"github.com/jinzhu/inflection"
 	"github.com/stoewer/go-strcase"
@@ -95,6 +96,7 @@ func (j JSONB) Value() (driver.Value, error) {
 
 // TableName sets the table name, including the schema
 func (ns PostgresStrategy) TableName(table string) string {
+	logger.Logger.Infow("Calling TableName", "table", table)
 	return ns.Schema + "." + inflection.Plural(strcase.SnakeCase(table))
 }
 
