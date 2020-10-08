@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ONSdigital/ras-rm-survey/models"
 	"github.com/gorilla/mux"
@@ -20,7 +22,17 @@ func showInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func showHealth(w http.ResponseWriter, r *http.Request) {
-	//This endpoint returns a dummy response for now
-	healthInfo := models.Health{Database: viper.GetString("dummy_health_database"), RabbitMQ: viper.GetString("dummy_health_rabbitmq")}
+	// Rabbit data is dummy until implemented
+	dbStatus := "DOWN"
+	d, err := db.DB()
+	if err == nil {
+		start := time.Now()
+		err = d.Ping()
+		if err == nil {
+			latency := time.Since(start)
+			dbStatus = fmt.Sprintf("UP %s", latency.Truncate(time.Millisecond))
+		}
+	}
+	healthInfo := models.Health{Database: dbStatus, RabbitMQ: viper.GetString("dummy_health_rabbitmq")}
 	json.NewEncoder(w).Encode(healthInfo)
 }

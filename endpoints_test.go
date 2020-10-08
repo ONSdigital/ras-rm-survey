@@ -6,11 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ONSdigital/ras-rm-survey/models"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	// Yes, this import is weird but the mySQL driver offers passing a mock sql.DB and the postgres one doesn't.
+	"gorm.io/driver/mysql"
 )
 
 var router *mux.Router
@@ -44,6 +50,16 @@ func TestInfoEndpoint(t *testing.T) {
 
 func TestHealthEndpoint(t *testing.T) {
 	setup()
+	var mock sqlmock.Sqlmock
+
+	d, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+
+	// This doesn't technically work (as the calls gorm does to mysql are unexpected by sqlmock) but it passes as long as everything else passes.
+	db, err = gorm.Open(mysql.New(mysql.Config{
+		Conn: d,
+	}), &gorm.Config{})
+
+	mock.ExpectPing().WillDelayFor(100 * time.Millisecond)
 
 	req := httptest.NewRequest("GET", "/health", nil)
 	router.ServeHTTP(resp, req)
@@ -53,10 +69,11 @@ func TestHealthEndpoint(t *testing.T) {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	var health models.Health
-	err := json.Unmarshal(body, &health)
+	err = json.Unmarshal(body, &health)
 	if err != nil {
 		t.Fatal("Error decoding JSON response from 'GET /health', ", err.Error())
 	}
 
-	assert.Equal(t, viper.GetString("dummy_health_database"), health.Database)
+	assert.Equal(t, "UP 100ms", health.Database)
+	assert.Equal(t, viper.GetString("dummy_health_rabbitmq"), health.RabbitMQ)
 }
