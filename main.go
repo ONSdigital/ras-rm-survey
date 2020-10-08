@@ -15,6 +15,7 @@ import (
 
 func main() {
 	viper.AutomaticEnv()
+	setDefaults()
 	err := logger.ConfigureLogger()
 	if err != nil {
 		log.Fatalln("Couldn't set up a logger, exiting", err)

@@ -69,8 +69,12 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: db-credentials
+<<<<<<< HEAD
                 key: {{ .Values.database.secrets.passwordKey }}
           - name: DB_SCHEMA
             value: {{ .Values.database.schema }}
           - name: LOG_LEVEL
             value: {{ .Values.logLevel }}
+=======
+                key: {{ .Values.database.secrets.passwordKey }}
+>>>>>>> 4616716... Merging into master and refactoring
