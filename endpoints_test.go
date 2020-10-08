@@ -46,6 +46,7 @@ func TestInfoEndpoint(t *testing.T) {
 	}
 
 	assert.Equal(t, viper.GetString("service_name"), info.Name)
+	assert.Equal(t, viper.GetString("app_version"), info.AppVersion)
 }
 
 func TestHealthEndpoint(t *testing.T) {
