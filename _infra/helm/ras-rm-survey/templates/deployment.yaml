@@ -36,7 +36,7 @@ spec:
             mountPath: /var/secrets/google
           env:
           - name: APP_VERSION
-            value: {{ .Chart.appVersion }}
+            value: {{ .Chart.AppVersion }}
           - name: SERVICE_NAME
             value: {{ .Chart.Name }}
           - name: GOOGLE_APPLICATION_CREDENTIALS
