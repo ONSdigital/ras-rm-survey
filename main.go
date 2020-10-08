@@ -9,33 +9,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type infoResponse struct{
-    Name string `json:"name"`
-    AppVersion string `json:"appVersion"`
-}
-
-type healthResponse struct{
-    Database string `json:"database"`
-    Rabbitmq string `json:"rabbitmq"`
-}
-
 func showInfo(w http.ResponseWriter, r *http.Request) {
-    vi := viper.New()
-    vi.SetConfigFile("_infra/helm/ras-rm-survey/Chart.yaml")
-    vi.ReadInConfig()
-
-    serviceInfo := infoResponse{Name: vi.GetString("Name"), AppVersion: vi.GetString("AppVersion")}
+    serviceInfo := infoResponse{Name: viper.GetString("service_name"), AppVersion: viper.GetString("app_version")}
     json.NewEncoder(w).Encode(serviceInfo)
 }
 
 func showHealth(w http.ResponseWriter, r *http.Request) {
     //This endpoint returns a dummy response for now
-    healthInfo := healthResponse{Database: "UP 100ms", Rabbitmq: "DOWN"}
+    healthInfo := healthResponse{Database: viper.GetString("dummy_health_database"), Rabbitmq: viper.GetString("dummy_health_rabbitmq")}
     json.NewEncoder(w).Encode(healthInfo)
 }
 
 func main() {
 	router := mux.NewRouter()
+
+	viper.AutomaticEnv()
+	setDefaults()
 	fmt.Println("Application started")
 
 	router.HandleFunc("/info", showInfo)
