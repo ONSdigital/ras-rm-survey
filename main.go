@@ -36,6 +36,7 @@ func main() {
 	db.AutoMigrate(&models.Survey{}, &models.CollectionExercise{}, &models.CollectionInstrument{}, &models.Email{})
 
 	router := mux.NewRouter()
+	handleEndpoints(router)
 	logger.Logger.Info("ras-rm-survey started")
 	http.ListenAndServe(":8080", router)
 }
