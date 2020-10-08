@@ -9,16 +9,17 @@ import (
 
     "github.com/spf13/viper"
     "github.com/stretchr/testify/assert"
-    "github.com/julienschmidt/httprouter"
+    "github.com/gorilla/mux"
 )
 
-var router *httprouter.Router
+var router *mux.Router
 var resp *httptest.ResponseRecorder
 
 func setup(){
     setDefaults()
-    router = httprouter.New()
+    router = mux.NewRouter()
     resp = httptest.NewRecorder()
+    handleEndpoints(router)
 }
 
 func TestInfoEndpoint(t *testing.T) {
