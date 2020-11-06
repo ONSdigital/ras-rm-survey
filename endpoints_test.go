@@ -13,10 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
-
 	// Yes, this import is weird but the mySQL driver offers passing a mock sql.DB and the postgres one doesn't.
-	"gorm.io/driver/mysql"
 )
 
 var router *mux.Router
@@ -52,13 +49,9 @@ func TestInfoEndpoint(t *testing.T) {
 func TestHealthEndpoint(t *testing.T) {
 	setup()
 	var mock sqlmock.Sqlmock
+	var err error
 
-	d, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-
-	// This doesn't technically work (as the calls gorm does to mysql are unexpected by sqlmock) but it passes as long as everything else passes.
-	db, err = gorm.Open(mysql.New(mysql.Config{
-		Conn: d,
-	}), &gorm.Config{})
+	db, mock, err = sqlmock.New(sqlmock.MonitorPingsOption(true))
 
 	mock.ExpectPing().WillDelayFor(100 * time.Millisecond)
 
