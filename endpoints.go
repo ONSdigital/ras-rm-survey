@@ -7,13 +7,16 @@ import (
 	"time"
 
 	"github.com/ONSdigital/ras-rm-survey/models"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"github.com/julienschmidt/httprouter"
 )
 
-func handleEndpoints(r *mux.Router) {
-	r.HandleFunc("/info", showInfo)
-	r.HandleFunc("/health", showHealth)
+func handleEndpoints(r *httprouter.Router) {
+    r.GET("/info", showInfo)
+    r.GET("/health", showHealth)
+	//r.HandleFunc("/info", showInfo)
+	//r.HandleFunc("/health", showHealth)
 }
 
 func showInfo(w http.ResponseWriter, r *http.Request) {

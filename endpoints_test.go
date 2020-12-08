@@ -10,18 +10,19 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ONSdigital/ras-rm-survey/models"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/julienschmidt/httprouter"
 	// Yes, this import is weird but the mySQL driver offers passing a mock sql.DB and the postgres one doesn't.
 )
 
-var router *mux.Router
+var router *httprouter.Router
 var resp *httptest.ResponseRecorder
 
 func setup() {
 	setDefaults()
-	router = mux.NewRouter()
+	router = httprouter.New()
 	resp = httptest.NewRecorder()
 	handleEndpoints(router)
 }

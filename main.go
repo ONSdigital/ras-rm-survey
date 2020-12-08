@@ -10,8 +10,9 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"github.com/julienschmidt/httprouter"
 )
 
 var db *sql.DB
@@ -34,7 +35,8 @@ func main() {
 
 	dbMigrate()
 
-	router := mux.NewRouter()
+    router := httprouter.New()
+	//router := mux.NewRouter()
 	handleEndpoints(router)
 	logger.Logger.Info("ras-rm-survey started")
 	http.ListenAndServe(":8080", router)
