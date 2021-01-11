@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	"database/sql"
+	//"database/sql"
 	"strings"
 
+    "github.com/ONSdigital/ras-rm-survey/logger"
     "github.com/gofrs/uuid"
 	"github.com/ONSdigital/ras-rm-survey/models"
 	"github.com/gorilla/mux"
@@ -47,7 +48,7 @@ func showHealth(w http.ResponseWriter, r *http.Request) {
 //Find survey by reference, short name, long name, or any combination of the three
 func getSurvey(w http.ResponseWriter, r *http.Request) {
 
-    fmt.Println(db)
+    //fmt.Println(db)
 
     if db == nil {
         w.WriteHeader(http.StatusInternalServerError)
@@ -73,15 +74,15 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
     for k := range queryParams {
         switch k {
         case "surveyRef":
-            sb.WriteString(" AND s.survey_ref='")
+            sb.WriteString(" AND survey_ref='")
             sb.WriteString(queryParams.Get("surveyRef"))
             sb.WriteString("'")
         case "shortName":
-            sb.WriteString(" AND s.short_name='")
+            sb.WriteString(" AND short_name='")
             sb.WriteString(queryParams.Get("shortName"))
             sb.WriteString("'")
         case "longName":
-            sb.WriteString(" AND s.long_name='")
+            sb.WriteString(" AND long_name='")
             sb.WriteString(queryParams.Get("longName"))
             sb.WriteString("'")
         default:
@@ -94,16 +95,34 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    queryString := "SELECT s.survey_ref, s.short_name, s.long_name, s.legal_basis, s.survey_mode FROM surveyv2.survey" + sb.String()
+    //change test_schema.survey to surveyv2.survey when done
+
+    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM test_schema.survey" + sb.String()
 
     rows, err := db.Query(queryString)
 
-    //put collection exercise here???
-    //survey = models.Survey{CollectionExercise: ["Collection exercise goes here"]}
+    if err != nil {
+        http.Error(w, "get survey query failed", http.StatusInternalServerError)
+        return
+    }
 
-    //data := rows.Scan(&survey.Reference, &survey.ShortName, &survey.LongName, &survey.LegalBasis, &survey.SurveyMode)
+    var listOfSurveys = []models.Survey{}
 
-    if err == sql.ErrNoRows {
+    for rows.Next(){
+        survey := models.Survey{}
+
+        rows.Scan(
+            &survey.Reference,
+            &survey.ShortName,
+            &survey.LongName,
+            &survey.LegalBasis,
+            &survey.SurveyMode,
+        )
+
+        listOfSurveys = append(listOfSurveys, survey)
+    }
+
+    if len(listOfSurveys) == 0 {
         re := models.NewRESTError("404", "Survey not found")
         data, err := json.Marshal(re)
         if err != nil {
@@ -118,29 +137,16 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if err != nil {
-        http.Error(w, "get survey query failed", http.StatusInternalServerError)
-        return
-    }
-
-    data, err := json.Marshal(rows)
+    data, err := json.Marshal(listOfSurveys)
     if err != nil {
         http.Error(w, "Failed to marshal survey JSON", http.StatusInternalServerError)
         return
     }
 
+    logger.Logger.Info("Successfully retrieved survey")
     w.Header().Set("Content-Type", "application/json; charset=UTF-8")
     w.WriteHeader(http.StatusOK)
     w.Write(data)
-
-    //vars := mux.Vars(r)
-    //ref, found := vars["survey_ref"]
-    //sName, found := vars["short_name"]
-    //lName, found := vars["long_name"]
-    //survey := new(Survey)
-    //surveyRow := api.GetSurveyStmt.QueryRow(ref, sName, lName)
-    //err := surveyRow.Scan()
-
 }
 
 //Create survey based on JSON request
@@ -155,7 +161,9 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    stmt, err := db.Prepare("INSERT INTO test_schema.survey VALUES($#)")
+    //replace with schemav2 when done
+
+    stmt, err := db.Prepare("INSERT INTO test_schema.survey VALUES($1, $2, $3, $4, $5)")
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
@@ -167,12 +175,14 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    keyVal := make(map[string]string)
-    json.Unmarshal(body, &keyVal)
-    shortName := keyVal["shortName"]
-    longName := keyVal["longName"]
-    legalBasis := keyVal["legalBasis"]
-    surveyMode := keyVal["surveyMode"]
+    var survey models.Survey
+
+    err = json.Unmarshal(body, &survey)
+
+    if err != nil {
+        http.Error(w, "Error unmarshalling JSON", http.StatusBadRequest)
+        return
+    }
 
     // Generate a UUID to uniquely identify the new survey
     surveyRef, err := uuid.NewV4()
@@ -181,14 +191,21 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    _, err = stmt.Exec(surveyRef, shortName, longName, legalBasis, surveyMode)
+    survey.Reference = surveyRef.String()
+
+    _, err = stmt.Exec(survey.Reference, survey.ShortName, survey.LongName, survey.LegalBasis, survey.SurveyMode)
     if err != nil {
         http.Error(w, "SQL statement error", http.StatusInternalServerError)
         return
     }
 
+    var js []byte
+    js, err = json.Marshal(&survey)
+
+    logger.Logger.Info("Successfully posted survey")
     w.Header().Set("Content-Type", "application/json; charset=UTF-8")
     w.WriteHeader(http.StatusCreated)
+    w.Write(js)
 }
 
 //Create survey based on JSON request
@@ -203,54 +220,38 @@ func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    queryParams := r.URL.Query()
-    if len(queryParams) == 0 {
-        w.WriteHeader(http.StatusBadRequest)
-        errorString := models.Error{
-            Error: "No query parameters provided for search",
-        }
-        json.NewEncoder(w).Encode(errorString)
+    vars := mux.Vars(r)
+
+    surveyRef := vars["reference"]
+
+    //change test_schema.survey to surveyv2.survey when done
+
+    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM test_schema.survey WHERE survey_ref = $1"
+
+    rows, err := db.Query(queryString, surveyRef)
+
+    if err != nil {
+        http.Error(w, "get survey query failed", http.StatusInternalServerError)
         return
     }
 
-    var sb strings.Builder
-    sb.WriteString(" WHERE 1=1")
-    for k := range queryParams {
-        switch k {
-        case "surveyRef":
-            sb.WriteString(" AND s.survey_ref='")
-            sb.WriteString(queryParams.Get("surveyRef"))
-            sb.WriteString("'")
-        case "shortName":
-            sb.WriteString(" AND s.short_name='")
-            sb.WriteString(queryParams.Get("shortName"))
-            sb.WriteString("'")
-        case "longName":
-            sb.WriteString(" AND s.long_name='")
-            sb.WriteString(queryParams.Get("longName"))
-            sb.WriteString("'")
-        default:
-            w.WriteHeader(http.StatusBadRequest)
-            errorString := models.Error{
-                Error: "Invalid query parameter " + k,
-            }
-            json.NewEncoder(w).Encode(errorString)
-            return
-        }
+    var listOfSurveys = []models.Survey{}
+
+    for rows.Next(){
+        survey := models.Survey{}
+
+        rows.Scan(
+            &survey.Reference,
+            &survey.ShortName,
+            &survey.LongName,
+            &survey.LegalBasis,
+            &survey.SurveyMode,
+        )
+
+        listOfSurveys = append(listOfSurveys, survey)
     }
 
-    ref := queryParams.Get("surveyRef")
-
-    queryString := "SELECT s.survey_ref, s.short_name, s.long_name, s.legal_basis, s.survey_mode FROM surveyv2.survey WHERE survey_ref = $1"
-
-    rows, err := db.Query(queryString, ref)
-
-    //put collection exercise here???
-    //survey = models.Survey{CollectionExercise: ["Collection exercise goes here"]}
-
-    //data := rows.Scan(&survey.Reference, &survey.ShortName, &survey.LongName, &survey.LegalBasis, &survey.SurveyMode)
-
-    if err == sql.ErrNoRows {
+    if len(listOfSurveys) == 0 {
         re := models.NewRESTError("404", "Survey not found")
         data, err := json.Marshal(re)
         if err != nil {
@@ -265,17 +266,13 @@ func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if err != nil {
-        http.Error(w, "get survey query failed", http.StatusInternalServerError)
-        return
-    }
-
-    data, err := json.Marshal(rows)
+    data, err := json.Marshal(listOfSurveys)
     if err != nil {
         http.Error(w, "Failed to marshal survey JSON", http.StatusInternalServerError)
         return
     }
 
+    logger.Logger.Info("Successfully retrieved survey from reference")
     w.Header().Set("Content-Type", "application/json; charset=UTF-8")
     w.WriteHeader(http.StatusOK)
     w.Write(data)
@@ -302,14 +299,15 @@ func deleteSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    _, err = stmt.Exec(params["surveyRef"])
+    _, err = stmt.Exec(params["reference"])
     if err != nil {
         http.Error(w, "SQL statement error", http.StatusInternalServerError)
         return
     }
 
+    logger.Logger.Info("Successfully deleted survey")
     w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    w.WriteHeader(http.StatusOK)
+    w.WriteHeader(http.StatusNoContent)
 }
 
 //Update survey based on JSON request
@@ -337,17 +335,26 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    keyVal := make(map[string]string)
-    json.Unmarshal(body, &keyVal)
-    shortName := keyVal["shortName"]
-    longName := keyVal["longName"]
-    legalBasis := keyVal["legalBasis"]
-    surveyMode := keyVal["surveyMode"]
+    var survey models.Survey
 
-    _, err = stmt.Exec(shortName, longName, legalBasis, surveyMode, params["survey_ref"])
+    err = json.Unmarshal(body, &survey)
+    if err != nil {
+        http.Error(w, "Error unmarshalling JSON", http.StatusBadRequest)
+        return
+    }
+
+    survey.Reference = params["reference"]
+    _, err = stmt.Exec(survey.ShortName, survey.LongName, survey.LegalBasis, survey.SurveyMode, survey.Reference)
     if err != nil {
         http.Error(w, "SQL statement error", http.StatusInternalServerError)
         return
     }
 
+    var js []byte
+    js, err = json.Marshal(&survey)
+
+    logger.Logger.Info("Successfully updated survey")
+    w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+    w.WriteHeader(http.StatusOK)
+    w.Write(js)
 }
