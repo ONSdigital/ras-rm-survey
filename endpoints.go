@@ -164,6 +164,8 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
     //replace with schemav2 when done
 
     stmt, err := db.Prepare("INSERT INTO test_schema.survey VALUES($1, $2, $3, $4, $5)")
+
+    logger.Logger.Info("This is the error: " + err.Error())
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
