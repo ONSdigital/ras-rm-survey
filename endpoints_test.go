@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 	"bytes"
-	//"fmt"
-//"github.com/ONSdigital/ras-rm-survey/logger"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ONSdigital/ras-rm-survey/models"
@@ -26,6 +24,8 @@ var searchSurveyQueryColumns = []string{"survey_ref", "short_name", "long_name",
 
 var findSurveyQuery = "SELECT (.+) FROM*"
 var postSurveyExec = "INSERT INTO (.+)*"
+var deleteSurveyExec = "DELETE FROM (.+)*"
+var updateSurveyExec = "UPDATE (.+)*"
 
 func setup() {
 	setDefaults()
@@ -112,35 +112,6 @@ func TestGetSurveyEndpoint (t *testing.T) {
 
 }
 
-/*
-
-func TestPostSurveyEndpoint2 (t *testing.T) {
-    setup()
-
-
-    var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2","surveyMode":"aTEST2"}`)
-
-
-    req := httptest.NewRequest("POST", "/survey", bytes.NewReader(jsonStr))
-    router.ServeHTTP(resp, req)
-
-    assert.Equal(t, http.StatusCreated, resp.Code)
-
-    var survey models.Survey
-
-    err := json.NewDecoder(resp.Body).Decode(&survey)
-    if err != nil {
-        t.Fatal("Error decoding JSON response from 'POST /survey', ", err.Error())
-    }
-
-    assert.Equal(t, survey.ShortName, "TS")
-
-}
-
-*/
-
-
-
 func TestPostSurveyEndpoint (t *testing.T) {
     setup()
 
@@ -154,11 +125,7 @@ func TestPostSurveyEndpoint (t *testing.T) {
 
     var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2","surveyMode":"aTEST2"}`)
 
-   //mock.ExpectPrepare(postSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
-
-    //mock.ExpectPrepare("INSERT INTO test_schema.survey VALUES($1, $2, $3, $4, $5)")
-
-    mock.ExpectPrepare(postSurveyExec)
+    mock.ExpectPrepare(postSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
 
     req := httptest.NewRequest("POST", "/survey", bytes.NewReader(jsonStr))
     router.ServeHTTP(resp, req)
@@ -172,6 +139,93 @@ func TestPostSurveyEndpoint (t *testing.T) {
         t.Fatal("Error decoding JSON response from 'POST /survey', ", err.Error())
     }
 
-    assert.Equal(t, survey.ShortName, "TS")
+    assert.Equal(t, survey.ShortName, "NEWPOST3333")
+}
 
+func TestGetSurveyByRefEndpoint(t *testing.T) {
+    setup()
+
+    var mock sqlmock.Sqlmock
+    var err error
+
+    db, mock, err = sqlmock.New()
+    if err != nil {
+        t.Fatal("Error setting up an SQL mock" + err.Error())
+    }
+
+    returnRows := mock.NewRows(searchSurveyQueryColumns)
+
+    returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+
+    mock.ExpectQuery(findSurveyQuery).WillReturnRows(returnRows)
+
+    req := httptest.NewRequest("GET", "/survey/8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", nil)
+    router.ServeHTTP(resp, req)
+
+    var surveys []models.Survey
+
+    err = json.NewDecoder(resp.Body).Decode(&surveys)
+    if err != nil {
+        t.Fatal("Error decoding JSON response from 'GET /survey', ", err.Error())
+    }
+
+    assert.Equal(t, http.StatusOK, resp.Code)
+    assert.Equal(t, surveys[0].Reference, "8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5")
+}
+
+func TestDeleteSurveyEndpoint (t *testing.T) {
+    setup()
+
+    var mock sqlmock.Sqlmock
+    var err error
+
+    db, mock, err = sqlmock.New()
+    if err != nil {
+        t.Fatal("Error setting up an SQL mock" + err.Error())
+    }
+
+    returnRows := mock.NewRows(searchSurveyQueryColumns)
+
+    returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+
+    mock.ExpectPrepare(deleteSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
+
+    req := httptest.NewRequest("DELETE", "/survey/8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", nil)
+    router.ServeHTTP(resp, req)
+
+    assert.Equal(t, http.StatusNoContent, resp.Code)
+}
+
+func TestUpdateSurveyEndpoint (t *testing.T) {
+    setup()
+
+    var mock sqlmock.Sqlmock
+    var err error
+
+    db, mock, err = sqlmock.New()
+    if err != nil {
+        t.Fatal("Error setting up an SQL mock" + err.Error())
+    }
+
+    returnRows := mock.NewRows(searchSurveyQueryColumns)
+
+    returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+
+    var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2","surveyMode":"aTEST2"}`)
+
+    mock.ExpectPrepare(updateSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
+
+    req := httptest.NewRequest("PATCH", "/survey/8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", bytes.NewReader(jsonStr))
+    router.ServeHTTP(resp, req)
+
+    assert.Equal(t, http.StatusOK, resp.Code)
+
+    var survey models.Survey
+
+    err = json.NewDecoder(resp.Body).Decode(&survey)
+    if err != nil {
+        t.Fatal("Error decoding JSON response from 'PATCH /survey', ", err.Error())
+    }
+
+    assert.Equal(t, survey.ShortName, "NEWPOST3333")
 }
