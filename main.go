@@ -12,19 +12,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	//"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
-
-const (
-  host     = "localhost"
-  port     = 5432
-  user     = "adamwilkie"
-  password = ""
-  dbname   = "test_db"
-)
 
 func main() {
 	viper.AutomaticEnv()
@@ -36,8 +27,6 @@ func main() {
 
 	logger.Logger.Info("Starting ras-rm-survey...")
 
-/*
-
 	dbURI := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable", viper.GetString("db_host"), viper.GetString("db_port"), viper.GetString("db_name"), viper.GetString("db_username"), viper.GetString("db_password"))
 	db, err = sql.Open("postgres", dbURI)
 	if err != nil {
@@ -46,29 +35,6 @@ func main() {
 
 	dbMigrate()
 
-*/
-
-//localhost database stuff
-
-  psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
-
-  db, err = sql.Open("postgres", psqlInfo)
-  if err != nil {
-  logger.Logger.Fatal("Couldn't connect to postgres, " + err.Error())
-    panic(err)
-  }
-  //defer db.Close()
-
-  err = db.Ping()
-  if err != nil {
-  logger.Logger.Fatal("Database ping failed, " + err.Error())
-    panic(err)
-  }
-
-  fmt.Println("Connected to localhost database!")
-//end of localhost database stuff
-
-    //router := httprouter.New()
 	router := mux.NewRouter()
 	handleEndpoints(router)
 	logger.Logger.Info("ras-rm-survey started")

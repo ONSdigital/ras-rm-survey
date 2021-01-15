@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	//"database/sql"
 	"strings"
 
     "github.com/ONSdigital/ras-rm-survey/logger"
@@ -14,7 +13,6 @@ import (
 	"github.com/ONSdigital/ras-rm-survey/models"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	//"github.com/julienschmidt/httprouter"
 )
 
 func handleEndpoints(r *mux.Router) {
@@ -47,8 +45,6 @@ func showHealth(w http.ResponseWriter, r *http.Request) {
 
 //Find survey by reference, short name, long name, or any combination of the three
 func getSurvey(w http.ResponseWriter, r *http.Request) {
-
-    //fmt.Println(db)
 
     if db == nil {
         w.WriteHeader(http.StatusInternalServerError)
@@ -95,9 +91,7 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    //change test_schema.survey to surveyv2.survey when done
-
-    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM test_schema.survey" + sb.String()
+    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM surveyv2.survey" + sb.String()
 
     rows, err := db.Query(queryString)
 
@@ -163,7 +157,7 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
 
     //replace with schemav2 when done
 
-    stmt, err := db.Prepare("INSERT INTO test_schema.survey VALUES($1, $2, $3, $4, $5)")
+    stmt, err := db.Prepare("INSERT INTO surveyv2.survey VALUES($1, $2, $3, $4, $5)")
 
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
@@ -225,9 +219,7 @@ func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     surveyRef := vars["reference"]
 
-    //change test_schema.survey to surveyv2.survey when done
-
-    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM test_schema.survey WHERE survey_ref = $1"
+    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM surveyv2.survey WHERE survey_ref = $1"
 
     rows, err := db.Query(queryString, surveyRef)
 
@@ -294,7 +286,7 @@ func deleteSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     var params = mux.Vars(r)
 
-    stmt, err := db.Prepare("DELETE FROM test_schema.survey WHERE survey_ref = $1")
+    stmt, err := db.Prepare("DELETE FROM surveyv2.survey WHERE survey_ref = $1")
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
@@ -324,7 +316,7 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     var params = mux.Vars(r)
 
-    stmt, err := db.Prepare("UPDATE test_schema.survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5")
+    stmt, err := db.Prepare("UPDATE surveyv2.survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5")
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
