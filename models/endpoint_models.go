@@ -1,10 +1,5 @@
 package models
 
-import (
-	"strconv"
-	"time"
-)
-
 type (
 	// Info represents the return values for GET /info
 	Info struct {
@@ -24,7 +19,8 @@ type (
     }
 
 	Survey struct {
-        Reference               string      `json:"reference"`
+	    ID                      string      `json:"id"`
+        SurveyRef               string      `json:"surveyRef"`
         ShortName               string      `json:"shortName"`
         LongName                string      `json:"longName"`
         LegalBasis              string      `json:"legalBasis"`
@@ -38,9 +34,3 @@ type (
     	Timestamp string `json:"timestamp"`
     }
 )
-
-    // NewRESTError returns a RESTError with the Timestamp field pre-populated.
-    func NewRESTError(code string, message string) RESTError {
-    	ts := strconv.Itoa(int(time.Now().UTC().Unix()))
-    	return RESTError{Code: code, Message: message, Timestamp: ts}
-    }

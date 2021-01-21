@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 	"strings"
+	"database/sql"
 
     "github.com/ONSdigital/ras-rm-survey/logger"
     "github.com/gofrs/uuid"
@@ -20,9 +21,9 @@ func handleEndpoints(r *mux.Router) {
 	r.HandleFunc("/health", showHealth).Methods("GET")
 	r.HandleFunc("/survey", getSurvey).Methods("GET")
 	r.HandleFunc("/survey", postSurvey).Methods("POST")
-	r.HandleFunc("/survey/{reference}", getSurveyByRef).Methods("GET")
-	r.HandleFunc("/survey/{reference}", deleteSurveyByRef).Methods("DELETE")
-	r.HandleFunc("/survey/{reference}", updateSurveyByRef).Methods("PATCH")
+	r.HandleFunc("/survey/{surveyRef}", getSurveyByRef).Methods("GET")
+	r.HandleFunc("/survey/{surveyRef}", deleteSurveyByRef).Methods("DELETE")
+	r.HandleFunc("/survey/{surveyRef}", updateSurveyByRef).Methods("PATCH")
 }
 
 func showInfo(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +68,8 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
 
     var sb strings.Builder
     sb.WriteString(" WHERE 1=1")
-    for k := range queryParams {
-        switch k {
+    for params := range queryParams {
+        switch params {
         case "surveyRef":
             sb.WriteString(" AND survey_ref='")
             sb.WriteString(queryParams.Get("surveyRef"))
@@ -84,14 +85,14 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         default:
             w.WriteHeader(http.StatusBadRequest)
             errorString := models.Error{
-                Error: "Invalid query parameter " + k,
+                Error: "Invalid query parameter " + params,
             }
             json.NewEncoder(w).Encode(errorString)
             return
         }
     }
 
-    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM surveyv2.survey" + sb.String()
+    queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey" + sb.String()
 
     rows, err := db.Query(queryString)
 
@@ -105,28 +106,25 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
     for rows.Next(){
         survey := models.Survey{}
 
-        rows.Scan(
-            &survey.Reference,
+        err = rows.Scan(
+            &survey.ID,
+            &survey.SurveyRef,
             &survey.ShortName,
             &survey.LongName,
             &survey.LegalBasis,
             &survey.SurveyMode,
         )
+        if err != nil {
+            http.Error(w, "Error scanning database rows", http.StatusInternalServerError)
+            return
+        }
 
         listOfSurveys = append(listOfSurveys, survey)
     }
 
     if len(listOfSurveys) == 0 {
-        re := models.NewRESTError("404", "Survey not found")
-        data, err := json.Marshal(re)
-        if err != nil {
-            http.Error(w, "Error marshaling NewRestError JSON", http.StatusInternalServerError)
-            return
-        }
-
         w.Header().Set("Content-Type", "application/json; charset=UTF-8")
         w.WriteHeader(http.StatusNotFound)
-        w.Write(data)
 
         return
     }
@@ -155,15 +153,6 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    //replace with schemav2 when done
-
-    stmt, err := db.Prepare("INSERT INTO surveyv2.survey VALUES($1, $2, $3, $4, $5)")
-
-    if err != nil {
-        http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
-        return
-    }
-
     body, err := ioutil.ReadAll(r.Body)
     if err != nil {
         http.Error(w, "Couldn't read message body", http.StatusInternalServerError)
@@ -171,28 +160,47 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
     }
 
     var survey models.Survey
-
     err = json.Unmarshal(body, &survey)
-
     if err != nil {
         http.Error(w, "Error unmarshalling JSON", http.StatusBadRequest)
         return
     }
 
+    tx, err := db.Begin()
+    if err != nil {
+        http.Error(w, "Error starting database transaction", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    stmt, err := db.Prepare("INSERT INTO " + viper.GetString("db_schema") + ".survey VALUES($1, $2, $3, $4, $5, $6)")
+    if err != nil {
+        http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
+        return
+    }
+
+    defer stmt.Close()
+
     // Generate a UUID to uniquely identify the new survey
-    surveyRef, err := uuid.NewV4()
+    newID, err := uuid.NewV4()
     if err != nil {
         http.Error(w, "Error generating random uuid", http.StatusInternalServerError)
         return
     }
 
-    survey.Reference = surveyRef.String()
+    survey.ID = newID.String()
 
-    _, err = stmt.Exec(survey.Reference, survey.ShortName, survey.LongName, survey.LegalBasis, survey.SurveyMode)
+    _, err = stmt.Exec(survey.ID, survey.SurveyRef, survey.ShortName, survey.LongName, survey.LegalBasis, survey.SurveyMode)
     if err != nil {
-        http.Error(w, "SQL statement error", http.StatusInternalServerError)
+        http.Error(w, "SQL statement error" + err.Error(), http.StatusInternalServerError)
         return
     }
+
+    err = tx.Commit()
+    if err != nil {
+            http.Error(w, "Error committing database transaction", http.StatusInternalServerError)
+            return
+        }
 
     var js []byte
     js, err = json.Marshal(&survey)
@@ -203,7 +211,7 @@ func postSurvey (w http.ResponseWriter, r *http.Request) {
     w.Write(js)
 }
 
-//Create survey based on JSON request
+//Get survey using the parameter reference
 func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     if db == nil {
@@ -217,9 +225,9 @@ func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     vars := mux.Vars(r)
 
-    surveyRef := vars["reference"]
+    surveyRef := vars["surveyRef"]
 
-    queryString := "SELECT survey_ref, short_name, long_name, legal_basis, survey_mode FROM surveyv2.survey WHERE survey_ref = $1"
+    queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1"
 
     rows, err := db.Query(queryString, surveyRef)
 
@@ -233,28 +241,26 @@ func getSurveyByRef (w http.ResponseWriter, r *http.Request) {
     for rows.Next(){
         survey := models.Survey{}
 
-        rows.Scan(
-            &survey.Reference,
+        err = rows.Scan(
+            &survey.ID,
+            &survey.SurveyRef,
             &survey.ShortName,
             &survey.LongName,
             &survey.LegalBasis,
             &survey.SurveyMode,
         )
+        if err != nil {
+                http.Error(w, "Error scanning database rows", http.StatusInternalServerError)
+                return
+            }
+
 
         listOfSurveys = append(listOfSurveys, survey)
     }
 
     if len(listOfSurveys) == 0 {
-        re := models.NewRESTError("404", "Survey not found")
-        data, err := json.Marshal(re)
-        if err != nil {
-            http.Error(w, "Error marshaling NewRestError JSON", http.StatusInternalServerError)
-            return
-        }
-
         w.Header().Set("Content-Type", "application/json; charset=UTF-8")
         w.WriteHeader(http.StatusNotFound)
-        w.Write(data)
 
         return
     }
@@ -286,15 +292,42 @@ func deleteSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     var params = mux.Vars(r)
 
-    stmt, err := db.Prepare("DELETE FROM surveyv2.survey WHERE survey_ref = $1")
+    tx, err := db.Begin()
+    if err != nil {
+        http.Error(w, "Error starting database transaction", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    results := db.QueryRow("SELECT * FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1" , params["surveyRef"])
+    var tempSurvey models.Survey
+    err = results.Scan(&tempSurvey.ID, &tempSurvey.SurveyRef, &tempSurvey.ShortName, &tempSurvey.LongName, &tempSurvey.LegalBasis, &tempSurvey.SurveyMode)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Survey reference not found", http.StatusNotFound)
+            return
+        }
+        http.Error(w, "Check query failed", http.StatusInternalServerError)
+        return
+    }
+
+    stmt, err := db.Prepare("DELETE FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1")
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
     }
 
-    _, err = stmt.Exec(params["reference"])
+    defer stmt.Close()
+
+    _, err = stmt.Exec(params["surveyRef"])
     if err != nil {
-        http.Error(w, "SQL statement error", http.StatusInternalServerError)
+        http.Error(w, "SQL statement error" + err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        http.Error(w, "Error committing database transaction", http.StatusInternalServerError)
         return
     }
 
@@ -316,12 +349,6 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     var params = mux.Vars(r)
 
-    stmt, err := db.Prepare("UPDATE surveyv2.survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5")
-    if err != nil {
-        http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
-        return
-    }
-
     body, err := ioutil.ReadAll(r.Body)
     if err != nil {
         http.Error(w, "Couldn't read message body", http.StatusInternalServerError)
@@ -336,12 +363,63 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    survey.Reference = params["reference"]
-    _, err = stmt.Exec(survey.ShortName, survey.LongName, survey.LegalBasis, survey.SurveyMode, survey.Reference)
+    tx, err := db.Begin()
     if err != nil {
-        http.Error(w, "SQL statement error", http.StatusInternalServerError)
+        http.Error(w, "Error starting database transaction", http.StatusInternalServerError)
         return
     }
+    defer tx.Rollback()
+
+    results := db.QueryRow("SELECT * FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1" , params["surveyRef"])
+    var tempSurvey models.Survey
+    err = results.Scan(&tempSurvey.ID, &tempSurvey.SurveyRef, &tempSurvey.ShortName, &tempSurvey.LongName, &tempSurvey.LegalBasis, &tempSurvey.SurveyMode)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Survey reference not found", http.StatusNotFound)
+            return
+        }
+        http.Error(w, "Check query failed", http.StatusInternalServerError)
+        return
+    }
+
+    var sb strings.Builder
+    sb.WriteString("UPDATE surveyv2.survey SET ")
+    if survey.ShortName != "" {
+        sb.WriteString("short_name = " + survey.ShortName + ",")
+    }
+    if survey.LongName != "" {
+        sb.WriteString("long_name = " + survey.LongName + ",")
+    }
+    if survey.LegalBasis != "" {
+        sb.WriteString("legal_basis = " + survey.LegalBasis + ",")
+    }
+    if survey.SurveyMode != "" {
+        sb.WriteString("long_name = " + survey.SurveyMode + ",")
+    }
+
+    sb.WriteString("WHERE survey_ref = " + params["surveyRef"])
+
+    stmt, err := db.Prepare(sb.String())
+    if err != nil {
+        http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
+        return
+    }
+
+    defer stmt.Close()
+
+    survey.SurveyRef = params["surveyRef"]
+
+    _, err = stmt.Exec(survey.SurveyRef)
+    if err != nil {
+        http.Error(w, "SQL statement error" + err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    err = tx.Commit()
+    if err != nil {
+            http.Error(w, "Error committing database transaction", http.StatusInternalServerError)
+            return
+        }
 
     var js []byte
     js, err = json.Marshal(&survey)
