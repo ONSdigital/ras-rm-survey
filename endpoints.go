@@ -87,37 +87,6 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    /*
-
-    var sb strings.Builder
-    sb.WriteString(" WHERE 1=1")
-    for params := range queryParams {
-        switch params {
-        case "surveyRef":
-            sb.WriteString(" AND survey_ref='")
-            sb.WriteString(queryParams.Get("surveyRef"))
-            sb.WriteString("'")
-        case "shortName":
-            sb.WriteString(" AND short_name='")
-            sb.WriteString(queryParams.Get("shortName"))
-            sb.WriteString("'")
-        case "longName":
-            sb.WriteString(" AND long_name='")
-            sb.WriteString(queryParams.Get("longName"))
-            sb.WriteString("'")
-        default:
-            w.WriteHeader(http.StatusBadRequest)
-            errorString := models.Error{
-                Error: "Invalid query parameter " + params,
-            }
-            json.NewEncoder(w).Encode(errorString)
-            return
-        }
-    }
-
-    */
-
-    //queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey" + sb.String()
     queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1 AND short_name = $2 AND long_name = $3"
 
     rows, err := db.Query(queryString, paramSurveyRef, paramShortName, paramLongName)
