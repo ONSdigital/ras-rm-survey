@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	"strings"
 	"database/sql"
 
     "github.com/ONSdigital/ras-rm-survey/logger"
@@ -66,6 +65,30 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    paramSurveyRef := "survey_ref"
+    paramShortName := "short_name"
+    paramLongName := "long_name"
+
+    for params := range queryParams {
+        switch params {
+        case "surveyRef":
+            paramSurveyRef = queryParams.Get("surveyRef")
+        case "shortName":
+            paramShortName = queryParams.Get("shortName")
+        case "longName":
+            paramLongName = queryParams.Get("longName")
+        default:
+            w.WriteHeader(http.StatusBadRequest)
+            errorString := models.Error{
+                Error: "Invalid query parameter " + params,
+            }
+            json.NewEncoder(w).Encode(errorString)
+            return
+        }
+    }
+
+    /*
+
     var sb strings.Builder
     sb.WriteString(" WHERE 1=1")
     for params := range queryParams {
@@ -92,9 +115,12 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey" + sb.String()
+    */
 
-    rows, err := db.Query(queryString)
+    //queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey" + sb.String()
+    queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1 AND short_name = $2 AND long_name = $3"
+
+    rows, err := db.Query(queryString, paramSurveyRef, paramShortName, paramLongName)
 
     if err != nil {
         http.Error(w, "get survey query failed", http.StatusInternalServerError)
@@ -363,6 +389,11 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if survey.ShortName == "" && survey.LongName == "" && survey.LegalBasis == "" && survey.SurveyMode == "" {
+        http.Error(w, "No values to update", http.StatusBadRequest)
+        return
+    }
+
     tx, err := db.Begin()
     if err != nil {
         http.Error(w, "Error starting database transaction", http.StatusInternalServerError)
@@ -382,24 +413,36 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var sb strings.Builder
-    sb.WriteString("UPDATE surveyv2.survey SET ")
+    newShortName := "short_name"
+    newLongName := "long_name"
+    newLegalBasis := "legal_basis"
+    newSurveyMode := "survey_mode"
+
+    //If the JSON body filled in a field, update the value in the database, else put the un-updated value into the survey object so that it's part of the returned JSON
     if survey.ShortName != "" {
-        sb.WriteString("short_name = " + survey.ShortName + ",")
+        newShortName = survey.ShortName
+    } else {
+        survey.ShortName = tempSurvey.ShortName
     }
     if survey.LongName != "" {
-        sb.WriteString("long_name = " + survey.LongName + ",")
+        newLongName = survey.LongName
+    } else {
+        survey.LongName = tempSurvey.LongName
     }
     if survey.LegalBasis != "" {
-        sb.WriteString("legal_basis = " + survey.LegalBasis + ",")
+        newLegalBasis = survey.LegalBasis
+    } else {
+        survey.LegalBasis = tempSurvey.LegalBasis
     }
     if survey.SurveyMode != "" {
-        sb.WriteString("long_name = " + survey.SurveyMode + ",")
+        newSurveyMode = survey.SurveyMode
+    } else {
+        survey.SurveyMode = tempSurvey.SurveyMode
     }
 
-    sb.WriteString("WHERE survey_ref = " + params["surveyRef"])
+    updateQuery := "UPDATE surveyv2.survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5"
 
-    stmt, err := db.Prepare(sb.String())
+    stmt, err := db.Prepare(updateQuery)
     if err != nil {
         http.Error(w, "SQL statement not prepared", http.StatusInternalServerError)
         return
@@ -409,7 +452,7 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
 
     survey.SurveyRef = params["surveyRef"]
 
-    _, err = stmt.Exec(survey.SurveyRef)
+    _, err = stmt.Exec(newShortName, newLongName, newLegalBasis, newSurveyMode, survey.SurveyRef)
     if err != nil {
         http.Error(w, "SQL statement error" + err.Error(), http.StatusInternalServerError)
         return

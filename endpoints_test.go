@@ -218,7 +218,7 @@ func TestUpdateSurveyEndpoint (t *testing.T) {
 
     returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
 
-    var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2","surveyMode":"aTEST2"}`)
+    var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2"}`)
 
     mock.ExpectBegin()
     mock.ExpectQuery(findSurveyQuery).WillReturnRows(returnRows)
@@ -238,6 +238,7 @@ func TestUpdateSurveyEndpoint (t *testing.T) {
     }
 
     assert.Equal(t, survey.ShortName, "NEWPOST3333")
+    assert.Equal(t, survey.SurveyMode, "Test Survey Mode")
 }
 
 func TestDeleteSurveyEndpointReturns404WhenSurveyRefNotFound (t *testing.T) {
@@ -394,6 +395,31 @@ func TestUpdateSurveyEndpointReturns400WhenInvalidJSONBody (t *testing.T) {
     mock.ExpectBegin()
 
     req := httptest.NewRequest("PATCH", "/survey/555", bytes.NewReader(jsonStr))
+    router.ServeHTTP(resp, req)
+
+    assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+func TestUpdateSurveyEndpointReturns400WhenNoNewValues (t *testing.T) {
+    setup()
+
+    var mock sqlmock.Sqlmock
+    var err error
+
+    db, mock, err = sqlmock.New()
+    if err != nil {
+        t.Fatal("Error setting up an SQL mock" + err.Error())
+    }
+
+    returnRows := mock.NewRows(searchSurveyQueryColumns)
+
+    returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+
+    var jsonStr = []byte(`{"shortName":"","longName":"","legalBasis":"","surveyMode":""}`)
+
+    mock.ExpectBegin()
+
+    req := httptest.NewRequest("PATCH", "/survey/123", bytes.NewReader(jsonStr))
     router.ServeHTTP(resp, req)
 
     assert.Equal(t, http.StatusBadRequest, resp.Code)
