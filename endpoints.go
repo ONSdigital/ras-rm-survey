@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 	"database/sql"
+	"strings"
+	"strconv"
 
     "github.com/ONSdigital/ras-rm-survey/logger"
     "github.com/gofrs/uuid"
@@ -65,18 +67,26 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    paramSurveyRef := "survey_ref"
-    paramShortName := "short_name"
-    paramLongName := "long_name"
+    var paramArray []string
+    var placeholderNumber int
+    var sb strings.Builder
+
+    sb.WriteString("SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey WHERE 1=1")
 
     for params := range queryParams {
         switch params {
         case "surveyRef":
-            paramSurveyRef = queryParams.Get("surveyRef")
+            paramArray = append(paramArray, queryParams.Get("surveyRef"))
+            placeholderNumber = placeholderNumber + 1
+            sb.WriteString(" AND survey_ref = $" + strconv.Itoa(placeholderNumber))
         case "shortName":
-            paramShortName = queryParams.Get("shortName")
+            paramArray = append(paramArray, queryParams.Get("shortName"))
+            placeholderNumber = placeholderNumber + 1
+            sb.WriteString(" AND short_name = $" + strconv.Itoa(placeholderNumber))
         case "longName":
-            paramLongName = queryParams.Get("longName")
+            paramArray = append(paramArray, queryParams.Get("longName"))
+            placeholderNumber = placeholderNumber + 1
+            sb.WriteString(" AND long_name = $" + strconv.Itoa(placeholderNumber))
         default:
             w.WriteHeader(http.StatusBadRequest)
             errorString := models.Error{
@@ -87,9 +97,17 @@ func getSurvey(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    queryString := "SELECT id, survey_ref, short_name, long_name, legal_basis, survey_mode FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1 AND short_name = $2 AND long_name = $3"
+    queryString := sb.String()
+    var rows *sql.Rows
+    var err error
 
-    rows, err := db.Query(queryString, paramSurveyRef, paramShortName, paramLongName)
+    if len(paramArray) == 1 {
+        rows, err = db.Query(queryString, paramArray[0])
+    } else if len(paramArray) == 2 {
+        rows, err = db.Query(queryString, paramArray[0], paramArray[1])
+    } else {
+        rows, err = db.Query(queryString, paramArray[0], paramArray[1], paramArray[2])
+    }
 
     if err != nil {
         http.Error(w, "get survey query failed", http.StatusInternalServerError)
@@ -370,7 +388,9 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
     }
     defer tx.Rollback()
 
-    results := db.QueryRow("SELECT * FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1" , params["surveyRef"])
+    selectQuery := "SELECT * FROM " + viper.GetString("db_schema") + ".survey WHERE survey_ref = $1"
+
+    results := db.QueryRow(selectQuery, params["surveyRef"])
     var tempSurvey models.Survey
     err = results.Scan(&tempSurvey.ID, &tempSurvey.SurveyRef, &tempSurvey.ShortName, &tempSurvey.LongName, &tempSurvey.LegalBasis, &tempSurvey.SurveyMode)
     if err != nil {
@@ -387,29 +407,28 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
     newLegalBasis := "legal_basis"
     newSurveyMode := "survey_mode"
 
-    //If the JSON body filled in a field, update the value in the database, else put the un-updated value into the survey object so that it's part of the returned JSON
     if survey.ShortName != "" {
         newShortName = survey.ShortName
     } else {
-        survey.ShortName = tempSurvey.ShortName
+        newShortName = tempSurvey.ShortName
     }
     if survey.LongName != "" {
         newLongName = survey.LongName
     } else {
-        survey.LongName = tempSurvey.LongName
+        newLongName = tempSurvey.LongName
     }
     if survey.LegalBasis != "" {
         newLegalBasis = survey.LegalBasis
     } else {
-        survey.LegalBasis = tempSurvey.LegalBasis
+        newLegalBasis = tempSurvey.LegalBasis
     }
     if survey.SurveyMode != "" {
         newSurveyMode = survey.SurveyMode
     } else {
-        survey.SurveyMode = tempSurvey.SurveyMode
+        newSurveyMode = tempSurvey.SurveyMode
     }
 
-    updateQuery := "UPDATE surveyv2.survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5"
+    updateQuery := "UPDATE " + viper.GetString("db_schema") + ".survey SET short_name = $1, long_name = $2, legal_basis = $3, survey_mode = $4 WHERE survey_ref = $5"
 
     stmt, err := db.Prepare(updateQuery)
     if err != nil {
@@ -430,6 +449,14 @@ func updateSurveyByRef (w http.ResponseWriter, r *http.Request) {
     err = tx.Commit()
     if err != nil {
             http.Error(w, "Error committing database transaction", http.StatusInternalServerError)
+            return
+        }
+
+    //redo the select query to show what the survey looks like now
+    newResults := db.QueryRow(selectQuery, survey.SurveyRef)
+    err = newResults.Scan(&survey.ID, &survey.SurveyRef, &survey.ShortName, &survey.LongName, &survey.LegalBasis, &survey.SurveyMode)
+        if err != nil {
+            http.Error(w, "Second search query failed", http.StatusInternalServerError)
             return
         }
 

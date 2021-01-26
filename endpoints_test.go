@@ -214,16 +214,59 @@ func TestUpdateSurveyEndpoint (t *testing.T) {
         t.Fatal("Error setting up an SQL mock" + err.Error())
     }
 
-    returnRows := mock.NewRows(searchSurveyQueryColumns)
+    beforePatchReturnRows := mock.NewRows(searchSurveyQueryColumns)
+    beforePatchReturnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
 
-    returnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+    afterPatchReturnRows := mock.NewRows(searchSurveyQueryColumns)
+    afterPatchReturnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "NEWPOST3333", "postsurvey", "Ltest2", "SMtest2")
+
+    var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2", "surveyMode":"SMtest2"}`)
+
+    mock.ExpectBegin()
+    mock.ExpectQuery(findSurveyQuery).WillReturnRows(beforePatchReturnRows)
+    mock.ExpectPrepare(updateSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
+    mock.ExpectCommit()
+    mock.ExpectQuery(findSurveyQuery).WillReturnRows(afterPatchReturnRows)
+
+    req := httptest.NewRequest("PATCH", "/survey/123", bytes.NewReader(jsonStr))
+    router.ServeHTTP(resp, req)
+
+    assert.Equal(t, http.StatusOK, resp.Code)
+
+    var survey models.Survey
+
+    err = json.NewDecoder(resp.Body).Decode(&survey)
+    if err != nil {
+        t.Fatal("Error decoding JSON response from 'PATCH /survey', ", err.Error())
+    }
+
+    assert.Equal(t, survey.ShortName, "NEWPOST3333")
+}
+
+func TestUpdateSurveyEndpointReturns200WhenNotAllParametersFilledIn (t *testing.T) {
+    setup()
+
+    var mock sqlmock.Sqlmock
+    var err error
+
+    db, mock, err = sqlmock.New()
+    if err != nil {
+        t.Fatal("Error setting up an SQL mock" + err.Error())
+    }
+
+    beforePatchReturnRows := mock.NewRows(searchSurveyQueryColumns)
+    beforePatchReturnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "TS", "Test Survey", "Test Legal Basis", "Test Survey Mode")
+
+    afterPatchReturnRows := mock.NewRows(searchSurveyQueryColumns)
+    afterPatchReturnRows.AddRow("8eb7bdf5-92c2-4c52-8cc8-8f6525301bc5", "123", "NEWPOST3333", "postsurvey", "Ltest2", "Test Survey Mode")
 
     var jsonStr = []byte(`{"shortName":"NEWPOST3333","longName":"postsurvey","legalBasis":"Ltest2"}`)
 
     mock.ExpectBegin()
-    mock.ExpectQuery(findSurveyQuery).WillReturnRows(returnRows)
+    mock.ExpectQuery(findSurveyQuery).WillReturnRows(beforePatchReturnRows)
     mock.ExpectPrepare(updateSurveyExec).ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
     mock.ExpectCommit()
+    mock.ExpectQuery(findSurveyQuery).WillReturnRows(afterPatchReturnRows)
 
     req := httptest.NewRequest("PATCH", "/survey/123", bytes.NewReader(jsonStr))
     router.ServeHTTP(resp, req)
