@@ -12,6 +12,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB

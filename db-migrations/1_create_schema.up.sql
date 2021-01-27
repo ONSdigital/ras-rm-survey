@@ -3,7 +3,8 @@ DROP SCHEMA IF EXISTS surveyv2 CASCADE;
 CREATE SCHEMA surveyv2;
 
 CREATE TABLE IF NOT EXISTS surveyv2.survey (
-    survey_ref uuid PRIMARY KEY,
+    id uuid PRIMARY KEY,
+    survey_ref text,
     short_name text,
     long_name text,
     legal_basis text,
@@ -12,7 +13,7 @@ CREATE TABLE IF NOT EXISTS surveyv2.survey (
 
 CREATE TABLE IF NOT EXISTS surveyv2.collection_exercise (
     exercise_id serial PRIMARY KEY,
-    survey_ref uuid NOT NULL,
+    survey_ref text NOT NULL,
     state text,
     exercise_uuid uuid NOT NULL,
     period_name text,
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS surveyv2.collection_exercise (
 
 CREATE TABLE IF NOT EXISTS surveyv2.collection_instrument (
     instrument_id serial PRIMARY KEY,
-    survey_ref uuid NOT NULL,
+    survey_ref text NOT NULL,
     instrument_uuid uuid NOT NULL,
     type text,
     classifiers jsonb,

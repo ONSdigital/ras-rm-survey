@@ -12,4 +12,5 @@ func setDefaults() {
 	viper.SetDefault("db_name", "ras")
 	viper.SetDefault("db_username", "postgres")
 	viper.SetDefault("db_password", "postgres")
+	viper.SetDefault("db_schema", "surveyv2")
 }
