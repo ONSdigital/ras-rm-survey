@@ -7,12 +7,11 @@ on:
     branches: [ main ]
     paths-ignore:
       - _infra/spinnaker/**
-      - _infra/helm/ras-rm-survey/Chart.yaml
   pull_request:
     branches: [ main ]
     paths-ignore:
       - _infra/spinnaker/**
-
+      - _infra/helm/ras-rm-survey/Chart.yaml
 env:
   IMAGE: ras-rm-survey
   REGISTRY_HOSTNAME: eu.gcr.io
@@ -76,7 +75,7 @@ jobs:
           gsutil cp $IMAGE-*.tgz gs://$ARTIFACT_BUCKET/$IMAGE/
 
       - name: Set current tag
-        if: github.ref == 'refs/heads/main'
+        if: github.ref != 'refs/heads/main'
         id: vars
         run: |
           git fetch --tags
